@@ -1,0 +1,7 @@
+[package]
+name = "sgf"
+version = "0.1.0"
+authors = ["Yuji Ichikawa <ichikawa.yuji@gmail.com>"]
+
+[dependencies]
+regex = "*"

@@ -1,0 +1,54 @@
+use std::collections::HashMap;
+use sgf_node::*;
+
+#[export]
+sgf_parse -> Vec<SgfNode>
+    = game_tree+
+
+game_tree -> SgfNode
+    = "(" s:sequence gs:game_tree* ")" {
+        let mut s = s;
+        let mut gs = gs;
+            {
+            let mut l = s.leaf_mut();
+            l.children.append(&mut gs);
+        }
+        s
+    }
+
+sequence -> SgfNode
+    = ns:node+ {
+        let mut ns = ns;
+        ns.reverse();
+        let mut i = ns.into_iter();
+        let mut l = i.next().unwrap();
+        for mut n in i {
+            n.children.push(l);
+            l = n;
+        }
+        l
+    }
+
+node -> SgfNode
+    = ";" props:property* {
+        let mut h = HashMap::new();
+        for e in props {
+            h.insert(e.0, e.1);
+        }
+        SgfNode::new(h)
+    }
+
+property -> (String, Vec<String>)
+    = i:prop_ident vs:prop_value+ {
+        (i, vs)
+    }
+
+prop_ident -> String
+    = [A-Z][A-Z]? {
+        match_str.to_string()
+    }
+
+prop_value -> String
+    = "[" ("\\]" / [^\]])* "]" {
+        match_str[1..match_str.len() - 1].to_string()
+    }
