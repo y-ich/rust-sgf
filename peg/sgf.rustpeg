@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use sgf_node::*;
 
 #[export]
-sgf_parse -> Vec<SgfNode>
+collection -> Vec<SgfNode>
     = game_tree+
 
 game_tree -> SgfNode

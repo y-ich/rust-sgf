@@ -115,8 +115,9 @@ impl <'input> ParseState<'input> {
         Failed
     }
 }
-fn parse_sgf_parse<'input>(input: &'input str, state: &mut ParseState<'input>,
-                           pos: usize) -> RuleResult<Vec<SgfNode>> {
+fn parse_collection<'input>(input: &'input str,
+                            state: &mut ParseState<'input>, pos: usize)
+ -> RuleResult<Vec<SgfNode>> {
     {
         let mut repeat_pos = pos;
         let mut repeat_value = vec!();
@@ -485,9 +486,9 @@ fn parse_prop_value<'input>(input: &'input str,
         }
     }
 }
-pub fn sgf_parse<'input>(input: &'input str) -> ParseResult<Vec<SgfNode>> {
+pub fn collection<'input>(input: &'input str) -> ParseResult<Vec<SgfNode>> {
     let mut state = ParseState::new();
-    match parse_sgf_parse(input, &mut state, 0) {
+    match parse_collection(input, &mut state, 0) {
         Matched(pos, value) => { if pos == input.len() { return Ok(value) } }
         _ => { }
     }
