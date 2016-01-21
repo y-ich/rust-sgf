@@ -16,6 +16,13 @@ pub struct SgfNode {
     pub children: Vec<SgfNode>,
 }
 
+#[derive(Debug)]
+pub enum SgfError {
+    NoProperties,
+    EmptyProperty,
+    ParseError,
+}
+
 impl fmt::Display for SgfNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut result = write!(f, "{{\n");
@@ -44,6 +51,8 @@ fn test_fmt() {
 }
 
 impl SgfNode {
+    /// Constructor.
+    /// Returns an SgfNode with given propertes.
     pub fn new(properties: HashMap<String, Vec<String>>) -> SgfNode {
         SgfNode {
             properties: properties,
@@ -51,6 +60,8 @@ impl SgfNode {
         }
     }
 
+    /// Returns a mutable reference of a leaf node in main line
+    /// This is for the parser.
     pub fn leaf_mut(&mut self) -> &mut SgfNode {
         if self.children.len() == 0 {
             self
@@ -59,142 +70,173 @@ impl SgfNode {
         }
     }
 
-    pub fn get_point(&self, id: &str) -> Option<SgfPoint> {
-        self.properties.get(id).map(|v| v[0].clone())
+    fn get_property(&self, id: &str) -> Result<&Vec<String>, SgfError> {
+        self.properties.get(id).ok_or(SgfError::NoProperties)
     }
 
-    pub fn set_point(&mut self, id: &str, value: SgfPoint) {
-        self.set_property(id, vec![value.to_string()]); // to_string is redundant but looks like consistent.
+    fn set_property(&mut self, id: &str, value: Vec<String>) -> &mut Self {
+        self.properties.remove(id);
+        self.properties.insert(id.to_string(), value);
+        self
     }
 
-    pub fn get_number(&self, id: &str) -> Option<SgfNumber> {
-        self.properties.get(id).and_then(|v| v[0].parse::<i32>().ok())
+    /// Returns a Result of id's value as SgfPoint.
+    pub fn get_point(&self, id: &str) -> Result<SgfPoint, SgfError> {
+        self.get_property(id).map(|v| v[0].clone())
     }
 
-    pub fn set_number(&mut self, id: &str, value: SgfNumber) {
-        self.set_property(id, vec![value.to_string()]);
+    /// Sets an SgfpPoint value to property id.
+    pub fn set_point(&mut self, id: &str, value: SgfPoint) -> &mut Self {
+        self.set_property(id, vec![value.to_string()]) // to_string is redundant but looks like consistent.
     }
 
-    pub fn get_points(&self, id: &str) -> Option<Vec<SgfPoint>> {
-        self.properties.get(id).cloned()
+    /// Returns a Result of id's value as SgfNumber.
+    pub fn get_number(&self, id: &str) -> Result<SgfNumber, SgfError> {
+        self.get_property(id).and_then(|v| v[0].parse::<i32>().map_err(|_| SgfError::ParseError))
     }
 
-    pub fn set_points(&mut self, id: &str, value: Vec<SgfPoint>) {
-        self.set_property(id, value);
+    /// Sets an SgfpNumber value to property id.
+    pub fn set_number(&mut self, id: &str, value: SgfNumber) -> &mut Self {
+        self.set_property(id, vec![value.to_string()])
     }
 
-    pub fn get_color(&self, id: &str) -> Option<SgfColor> {
-        self.properties.get(id).and_then(|v| v[0].chars().next())
+    /// Returns a Result of id's value as a vector of SgfPoint.
+    pub fn get_points(&self, id: &str) -> Result<Vec<SgfPoint>, SgfError> {
+        self.properties.get(id).cloned().ok_or(SgfError::NoProperties)
     }
 
-    pub fn set_color(&mut self, id: &str, value: SgfColor) {
-        self.set_property(id, vec![value.to_string()]);
+    /// Sets an SgfPoint vector to property id.
+    pub fn set_points(&mut self, id: &str, value: Vec<SgfPoint>) -> &mut Self {
+        self.set_property(id, value)
     }
 
-    pub fn get_double(&self, id: &str) -> Option<SgfDouble> {
-        self.properties.get(id).and_then(|v| v[0].chars().next())
+    /// Returns a Result of id's value as SgfColor.
+    pub fn get_color(&self, id: &str) -> Result<SgfColor, SgfError> {
+        self.get_property(id).and_then(|v| v[0].chars().next().ok_or(SgfError::EmptyProperty))
     }
 
-    pub fn set_double(&mut self, id: &str, value: SgfDouble) {
-        self.set_property(id, vec![value.to_string()]);
+    /// Sets an SgfColor to property id.
+    pub fn set_color(&mut self, id: &str, value: SgfColor) -> &mut Self {
+        self.set_property(id, vec![value.to_string()])
     }
 
-    pub fn get_text(&self, id: &str) -> Option<SgfText> {
-        self.properties.get(id).map(|v| decode_text(&v[0]))
+    /// Returns a Result of id's value as SgfDouble.
+    pub fn get_double(&self, id: &str) -> Result<SgfDouble, SgfError> {
+        self.get_property(id).and_then(|v| v[0].chars().next().ok_or(SgfError::EmptyProperty))
     }
 
-    pub fn set_text(&mut self, id: &str, value: String) {
-        self.set_property(id, vec![encode_text(&value)]);
+    /// Sets an SgfDouble to property id.
+    pub fn set_double(&mut self, id: &str, value: SgfDouble) -> &mut Self {
+        self.set_property(id, vec![value.to_string()])
     }
 
-    pub fn get_simple_text(&self, id: &str) -> Option<SgfSimpleText> {
-        self.properties.get(id).map(|v| decode_simple_text(&v[0]))
+    /// Returns a Result of id's value as SgfText.
+    pub fn get_text(&self, id: &str) -> Result<SgfText, SgfError> {
+        self.get_property(id).map(|v| decode_text(&v[0]))
     }
 
-    pub fn set_simple_text(&mut self, id: &str, value: String) {
-        self.set_property(id, vec![encode_text(&value)]);
+    /// Sets an SgfText to property id.
+    pub fn set_text(&mut self, id: &str, value: String) -> &mut Self {
+        self.set_property(id, vec![encode_text(&value)])
     }
 
-    pub fn get_real(&self, id: &str) -> Option<SgfReal> {
-        self.properties.get(id).and_then(|v| v[0].parse::<f32>().ok())
+    /// Returns a Result of id's value as SgfSimpleText.
+    pub fn get_simple_text(&self, id: &str) -> Result<SgfSimpleText, SgfError> {
+        self.get_property(id).map(|v| decode_simple_text(&v[0]))
     }
 
-    pub fn set_real(&mut self, id: &str, value: SgfReal) {
-        self.set_property(id, vec![value.to_string()]);
+    /// Sets an SgfSimpleText to property id.
+    pub fn set_simple_text(&mut self, id: &str, value: String) -> &mut Self {
+        self.set_property(id, vec![encode_text(&value)])
     }
 
-    pub fn get_point_point(&self, id: &str) -> Option<(SgfPoint, SgfPoint)> {
-        self.properties.get(id).and_then(|v| {
+    /// Returns a Result of id's value as SgfReal.
+    pub fn get_real(&self, id: &str) -> Result<SgfReal, SgfError> {
+        self.get_property(id).and_then(|v| v[0].parse::<f32>().map_err(|_| SgfError::ParseError))
+    }
+
+    /// Sets an SgfReal to property id.
+    pub fn set_real(&mut self, id: &str, value: SgfReal) -> &mut Self {
+        self.set_property(id, vec![value.to_string()])
+    }
+
+    /// Returns a Result of id's value as Compose of SgfPoints.
+    pub fn get_point_point(&self, id: &str) -> Result<(SgfPoint, SgfPoint), SgfError> {
+        self.get_property(id).and_then(|v| {
             let mut compose = v[0].splitn(2, ":");
-            compose.next().and_then(|f|
-                compose.next().map(|s| (f.to_string(), s.to_string())))
+            compose.next().ok_or(SgfError::EmptyProperty).and_then(|f|
+                compose.next().ok_or(SgfError::EmptyProperty).map(|s| (f.to_string(), s.to_string())))
         })
     }
 
-    pub fn set_point_point(&mut self, id: &str, value: (SgfPoint, SgfPoint)) {
-        self.set_property(id, vec![format!("{}:{}", value.0, value.1)]);
+    /// Sets a compose of SgfPoints to property id.
+    pub fn set_point_point(&mut self, id: &str, value: (SgfPoint, SgfPoint)) -> &mut Self {
+        self.set_property(id, vec![format!("{}:{}", value.0, value.1)])
     }
 
-    pub fn get_point_simple_text(&self, id: &str) -> Option<(SgfPoint, SgfSimpleText)> {
-        self.properties.get(id).and_then(|v| {
+    /// Returns a Result of id's value as Compose of SgfPoint and SgfSimpleText.
+    pub fn get_point_simple_text(&self, id: &str) -> Result<(SgfPoint, SgfSimpleText), SgfError> {
+        self.get_property(id).and_then(|v| {
             let mut compose = v[0].splitn(2, ":");
-            compose.next().and_then(|f|
-                compose.next().map(|s| (f.to_string(), decode_simple_text(s))))
+            compose.next().ok_or(SgfError::EmptyProperty).and_then(|f|
+                compose.next().ok_or(SgfError::EmptyProperty).map(|s| (f.to_string(), decode_simple_text(s))))
         })
     }
 
-    pub fn set_point_simple_text(&mut self, id: &str, value: (SgfPoint, SgfSimpleText)) {
-        self.set_property(id, vec![format!("{}:{}", value.0, encode_text(&value.1))]);
+    /// Sets a compose of SgfPoint and SgfSimpleText to property id.
+    pub fn set_point_simple_text(&mut self, id: &str, value: (SgfPoint, SgfSimpleText)) -> &mut Self {
+        self.set_property(id, vec![format!("{}:{}", value.0, encode_text(&value.1))])
     }
 
-    pub fn get_simple_text_simple_text(&self, id: &str) -> Option<(SgfSimpleText, SgfSimpleText)> {
-        self.properties.get(id).and_then(|v| {
+    /// Returns a Result of id's value as Compose of SgfSimpleTexts.
+    pub fn get_simple_text_simple_text(&self, id: &str) -> Result<(SgfSimpleText, SgfSimpleText), SgfError> {
+        self.get_property(id).and_then(|v| {
             let mut compose = v[0].splitn(2, ":");
-            compose.next().and_then(|f|
-                compose.next().map(|s| (decode_simple_text(f), decode_simple_text(s))))
+            compose.next().ok_or(SgfError::EmptyProperty).and_then(|f|
+                compose.next().ok_or(SgfError::EmptyProperty).map(|s| (decode_simple_text(f), decode_simple_text(s))))
         })
     }
 
-    pub fn set_simple_text_simple_text(&mut self, id: &str, value: (SgfSimpleText, SgfSimpleText)) {
-        self.set_property(id, vec![format!("{}:{}", encode_text(&value.0), encode_text(&value.1))]);
+    /// Sets a compose of SgfSimpleTexts to property id.
+    pub fn set_simple_text_simple_text(&mut self, id: &str, value: (SgfSimpleText, SgfSimpleText)) -> &mut Self {
+        self.set_property(id, vec![format!("{}:{}", encode_text(&value.0), encode_text(&value.1))])
     }
 
-    pub fn get_number_number(&self, id: &str) -> Option<(SgfNumber, SgfNumber)> {
-        self.properties.get(id).and_then(|v| {
+    /// Returns a Result of id's value as Compose of SgfNumbers.
+    pub fn get_number_number(&self, id: &str) -> Result<(SgfNumber, SgfNumber), SgfError> {
+        self.get_property(id).and_then(|v| {
             let mut compose = v[0].splitn(2, ":");
-            compose.next()
-                .and_then(|f| f.parse::<i32>().ok())
+            compose.next().ok_or(SgfError::EmptyProperty)
+                .and_then(|f| f.parse::<i32>().map_err(|_| SgfError::ParseError))
                 .and_then(|f| {
-                    compose.next().and_then(|s|
+                    compose.next().ok_or(SgfError::EmptyProperty).and_then(|s|
                         match s.parse::<i32>() {
-                            Ok(s) => Some((f, s)),
-                            Err(_) => None,
+                            Ok(s) => Ok((f, s)),
+                            Err(_) => Err(SgfError::ParseError),
                         }
                     )
                 })
         })
     }
 
-    pub fn set_number_number(&mut self, id: &str, value: (SgfNumber, SgfNumber)) {
-        self.set_property(id, vec![format!("{}:{}", value.0, value.1)]);
+    /// Sets a compose of SgfNumbers to property id.
+    pub fn set_number_number(&mut self, id: &str, value: (SgfNumber, SgfNumber)) -> &mut Self {
+        self.set_property(id, vec![format!("{}:{}", value.0, value.1)])
     }
 
-    pub fn get_number_simple_text(&self, id: &str) -> Option<(SgfNumber, SgfSimpleText)> {
-        self.properties.get(id).and_then(|v| {
+    /// Returns a Result of id's value as Compose of SgfNumber and SgfSimpleText.
+    pub fn get_number_simple_text(&self, id: &str) -> Result<(SgfNumber, SgfSimpleText), SgfError> {
+        self.get_property(id).and_then(|v| {
             let mut compose = v[0].splitn(2, ":");
-            compose.next()
-                .and_then(|f| f.parse::<i32>().ok())
-                .and_then(|f| compose.next().map(|s| (f, decode_simple_text(s))))
+            compose.next().ok_or(SgfError::EmptyProperty)
+                .and_then(|f| f.parse::<i32>().map_err(|_| SgfError::ParseError))
+                .and_then(|f| compose.next().ok_or(SgfError::EmptyProperty).map(|s| (f, decode_simple_text(s))))
         })
     }
 
-    pub fn set_number_simple_text(&mut self, id: &str, value: (SgfNumber, SgfSimpleText)) {
-        self.set_property(id, vec![format!("{}:{}", value.0, encode_text(&value.1))]);
-    }
-
-    fn set_property(&mut self, id: &str, value: Vec<String>) {
-        self.properties.remove(id);
-        self.properties.insert(id.to_string(), value);
+    /// Sets a compose of SgfNumber and SgfSimpleText to property id.
+    pub fn set_number_simple_text(&mut self, id: &str, value: (SgfNumber, SgfSimpleText)) -> &mut Self {
+        self.set_property(id, vec![format!("{}:{}", value.0, encode_text(&value.1))])
     }
 }
 
@@ -248,49 +290,49 @@ mod sgf_node_tests {
     #[test]
     fn test_get_number() {
         let node = &sgf_parse("(;CA[UTF-8]FF[4])").unwrap()[0];
-        assert_eq!(node.get_number("FF"), Some(4));
+        assert_eq!(node.get_number("FF").unwrap(), 4);
     }
 
     #[test]
     fn test_get_real() {
         let node = &sgf_parse("(;CA[UTF-8]FF[4]KM[6.5])").unwrap()[0];
-        assert_eq!(node.get_real("KM"), Some(6.5));
+        assert_eq!(node.get_real("KM").unwrap(), 6.5);
     }
 
     #[test]
     fn test_get_points() {
         let node = &sgf_parse("(;CA[UTF-8]FF[4]KM[6.5]AB[ab])").unwrap()[0];
-        assert_eq!(node.get_points("AB"), Some(vec!["ab".to_string()]));
+        assert_eq!(node.get_points("AB").unwrap(), vec!["ab".to_string()]);
     }
 
     #[test]
     fn test_get_point() {
         let node = &sgf_parse("(;CA[UTF-8]FF[4]KM[6.5];B[ab])").unwrap()[0];
-        assert_eq!(node.children[0].get_point("B"), Some("ab".to_string()));
+        assert_eq!(node.children[0].get_point("B").unwrap(), "ab".to_string());
     }
 
     #[test]
     fn test_get_text() {
         let node = &sgf_parse("(;CA[UTF-8]FF[4]GC[text\ntext])").unwrap()[0];
-        assert_eq!(node.get_text("GC"), Some("text\ntext".to_string()));
+        assert_eq!(node.get_text("GC").unwrap(), "text\ntext".to_string());
     }
 
     #[test]
     fn test_get_simple_text() {
         let node = &sgf_parse("(;CA[UTF-8]FF[4]N[simple\\\ntext\nsimple])").unwrap()[0];
-        assert_eq!(node.get_simple_text("N"), Some("simpletext simple".to_string()));
+        assert_eq!(node.get_simple_text("N").unwrap(), "simpletext simple".to_string());
     }
 
     #[test]
     fn test_get_simple_text_simple_text() {
         let node = &sgf_parse("(;CA[UTF-8]FF[4]AP[mimiaka:1.0])").unwrap()[0];
-        assert_eq!(node.get_simple_text_simple_text("AP"), Some(("mimiaka".to_string(), "1.0".to_string())));
+        assert_eq!(node.get_simple_text_simple_text("AP").unwrap(), ("mimiaka".to_string(), "1.0".to_string()));
     }
 
     #[test]
     fn test_set_text() {
         let node = &mut sgf_parse("(;CA[UTF-8]FF[4]AP[mimiaka:1.0])").unwrap()[0];
         node.set_text("GC", "test:".to_string());
-        assert_eq!(node.get_text("GC"), Some("test:".to_string()));
+        assert_eq!(node.get_text("GC").unwrap(), "test:".to_string());
     }
 }
