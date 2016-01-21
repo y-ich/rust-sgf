@@ -12,11 +12,15 @@ pub use sgf_node::*;
 use parser::*;
 
 /// Returns a vector of SGF root nodes
-/// # Example
+///
+/// # Examples
 ///
 /// ```
+/// use sgf::sgf_parse;
+///
 /// let nodes = sgf_parse("(;CA[UTF-8]FF[4])");
 /// ```
+///
 #[inline(always)]
 pub fn sgf_parse<'input>(input: &'input str) -> ParseResult<Vec<SgfNode>> {
     collection(input)

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use regex::Regex;
 
 pub type SgfPoint      = String;
@@ -13,6 +14,33 @@ pub type SgfSimpleText = String;
 pub struct SgfNode {
     properties: HashMap<String, Vec<String>>,
     pub children: Vec<SgfNode>,
+}
+
+impl fmt::Display for SgfNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut result = write!(f, "{{\n");
+        for (key, value) in self.properties.iter() {
+            let vstr = if value.len() == 1 {
+                value[0].clone()
+            } else {
+                value.iter().map(|e| format!("[{}]", e)).fold("".to_string(), |acc, i| acc + &i)
+            };
+            result = result.and(write!(f, "    {}: {}\n", key, vstr));
+        }
+        result.and(write!(f, "}}"))
+    }
+}
+
+#[test]
+#[should_panic]
+fn test_fmt() {
+    let mut hash = HashMap::new();
+    hash.insert("GC".to_string(), vec!["test".to_string()]);
+    hash.insert("FF".to_string(), vec!["4".to_string()]);
+
+    let n = SgfNode::new(hash);
+    println!("{}", n);
+    assert!(false)
 }
 
 impl SgfNode {
