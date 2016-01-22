@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::ops::{Index, IndexMut, Deref, DerefMut};
 use std::fmt;
 use regex::Regex;
+use parser::*;
 
 pub type SgfPoint      = String;
 pub type SgfColor      = char;
@@ -10,15 +12,6 @@ pub type SgfDouble     = char;
 pub type SgfText       = String;
 pub type SgfSimpleText = String;
 
-/// SGF node with children. It means that a node also represents game tree.
-/// Access the field 'children' directly to traverse in its tree.
-/// To access SGF properties of the node, use various accessors below.
-#[derive(Debug)]
-pub struct SgfNode {
-    properties: HashMap<String, Vec<String>>,
-    pub children: Vec<SgfNode>,
-}
-
 #[derive(Debug)]
 pub enum SgfError {
     NoProperties,
@@ -26,7 +19,117 @@ pub enum SgfError {
     ParseError,
 }
 
-impl fmt::Display for SgfNode {
+/// SGF collection
+#[derive(Debug)]
+pub struct SgfCollection(Vec<SgfNode>);
+
+impl SgfCollection {
+    /// Parses a SGF string and returns a SgfCollection.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use sgf::*;
+    ///
+    /// let c = SgfCollection::from_sgf("(;CA[UTF-8]FF[4])");
+    /// ```
+    ///
+    pub fn from_sgf(sgf_str: &str) -> ParseResult<SgfCollection> {
+        collection(sgf_str)
+    }
+
+    pub fn new(games: Vec<SgfNode>) -> SgfCollection {
+        SgfCollection(games)
+    }
+}
+
+impl Deref for SgfCollection {
+    type Target = [SgfNode];
+
+    fn deref(&self) -> &[SgfNode] {
+        &self.0
+    }
+}
+
+impl DerefMut for SgfCollection {
+    fn deref_mut(&mut self) -> &mut [SgfNode] {
+        &mut self.0
+    }
+}
+
+impl Index<usize> for SgfCollection {
+    type Output = SgfNode;
+
+    #[inline]
+    fn index<'a>(&'a self, index: usize) -> &'a Self::Output {
+        &(**self)[index]
+    }
+}
+
+impl IndexMut<usize> for SgfCollection {
+    #[inline]
+    fn index_mut<'a>(&mut self, index: usize) -> &mut Self::Output {
+        &mut (**self)[index]
+    }
+}
+
+impl fmt::Display for SgfCollection {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.iter().fold(Ok(()), |acc, item|
+            acc.and(write!(f, "({})", item))
+        )
+    }
+}
+
+#[cfg(test)]
+mod test_sgf_collection {
+    use sgf_node::*;
+    #[test]
+    fn test_from_sgf1() {
+        let result = SgfCollection::from_sgf("(;CA[UTF-8]FF[4])");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_from_sgf2() {
+        let node = &SgfCollection::from_sgf("(;FF[4]C[root](;C[a];C[b](;C[c])
+            (;C[d];C[e]))
+            (;C[f](;C[g];C[h];C[i])
+            (;C[j])))").unwrap()[0];
+        assert!(node.children.len() == 2 && node.children[0].children[0].children.len() == 2);
+    }
+
+    #[test]
+    fn test_from_sgf_fail() {
+        let result = SgfCollection::from_sgf("(;CA[UTF-8]FFF[4])");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fmt() {
+        let sgf = "(;FF[4];C[a];C[b](;C[c])(;C[d];C[e])(;C[f](;C[g];C[h];C[i])(;C[j])))";
+        let collection = SgfCollection::from_sgf(sgf).unwrap();
+        let string = format!("{}", collection);
+        assert_eq!(&string, sgf);
+    }
+
+    #[test]
+    fn test_index() {
+        let sgf = "(;FF[4]GC[game1])(;FF[4]GC[game2])";
+        let collection = SgfCollection::from_sgf(sgf).unwrap();
+        assert_eq!(collection[1].get_simple_text("GC").unwrap(), "game2".to_string());
+    }
+}
+
+/// SGF node with children. It means that a node also represents game tree.
+/// Access the field 'children' directly to traverse in its tree.
+/// To access SGF properties of the node, use various accessors below.
+pub struct SgfNode {
+    properties: HashMap<String, Vec<String>>,
+    pub children: Vec<SgfNode>,
+}
+
+impl fmt::Debug for SgfNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut result = write!(f, "{{\n");
         for (key, value) in self.properties.iter() {
@@ -41,15 +144,35 @@ impl fmt::Display for SgfNode {
     }
 }
 
+impl fmt::Display for SgfNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut result = write!(f, ";");
+        for (key, value) in self.properties.iter() {
+            result = result.and(write!(f, "{}", key));
+            for v in value {
+                result = result.and(write!(f, "[{}]", v));
+            }
+        }
+        if self.children.len() == 1 {
+            result = result.and(write!(f, "{}", self.children[0]));
+        } else {
+            for child in self.children.iter() {
+                result = result.and(write!(f, "({})", child));
+            }
+        }
+        result
+    }
+}
+
 #[test]
 #[should_panic]
-fn test_fmt() {
+fn test_debug_fmt() {
     let mut hash = HashMap::new();
     hash.insert("GC".to_string(), vec!["test".to_string()]);
     hash.insert("FF".to_string(), vec!["4".to_string()]);
 
     let n = SgfNode::new(hash);
-    println!("{}", n);
+    println!("{:?}", n);
     assert!(false)
 }
 
@@ -82,26 +205,6 @@ impl SgfNode {
         self.properties.remove(id);
         self.properties.insert(id.to_string(), value);
         self
-    }
-
-    /// Writes itself and its children in SGF format to Write f.
-    /// This is for the function sgf_write.
-    pub fn fmt_sgf<T: fmt::Write>(&self, f: &mut T) -> fmt::Result {
-        let mut result = write!(f, ";");
-        for (key, value) in self.properties.iter() {
-            result = result.and(write!(f, "{}", key));
-            for v in value {
-                result = result.and(write!(f, "[{}]", v));
-            }
-        }
-        if self.children.len() == 1 {
-            result = result.and(self.children[0].fmt_sgf(f));
-        } else {
-            for child in self.children.iter() {
-                result = result.and(write!(f, "(")).and(child.fmt_sgf(f)).and(write!(f, ")"));
-            }
-        }
-        result
     }
 
     /// Returns a Result of id's value as SgfPoint.
@@ -297,53 +400,52 @@ fn test_encode_text() {
 
 #[cfg(test)]
 mod sgf_node_tests {
-    use sgf_parse;
-
+    use sgf_node::*;
     #[test]
     fn test_get_number() {
-        let node = &sgf_parse("(;CA[UTF-8]FF[4])").unwrap()[0];
+        let node = &SgfCollection::from_sgf("(;CA[UTF-8]FF[4])").unwrap()[0];
         assert_eq!(node.get_number("FF").unwrap(), 4);
     }
 
     #[test]
     fn test_get_real() {
-        let node = &sgf_parse("(;CA[UTF-8]FF[4]KM[6.5])").unwrap()[0];
+        let node = &SgfCollection::from_sgf("(;CA[UTF-8]FF[4]KM[6.5])").unwrap()[0];
         assert_eq!(node.get_real("KM").unwrap(), 6.5);
     }
 
     #[test]
     fn test_get_points() {
-        let node = &sgf_parse("(;CA[UTF-8]FF[4]KM[6.5]AB[ab])").unwrap()[0];
+        let node = &SgfCollection::from_sgf("(;CA[UTF-8]FF[4]KM[6.5]AB[ab])").unwrap()[0];
         assert_eq!(node.get_points("AB").unwrap(), vec!["ab".to_string()]);
     }
 
     #[test]
     fn test_get_point() {
-        let node = &sgf_parse("(;CA[UTF-8]FF[4]KM[6.5];B[ab])").unwrap()[0];
+        let node = &SgfCollection::from_sgf("(;CA[UTF-8]FF[4]KM[6.5];B[ab])").unwrap()[0];
         assert_eq!(node.children[0].get_point("B").unwrap(), "ab".to_string());
     }
 
     #[test]
     fn test_get_text() {
-        let node = &sgf_parse("(;CA[UTF-8]FF[4]GC[text\ntext])").unwrap()[0];
+        let node = &SgfCollection::from_sgf("(;CA[UTF-8]FF[4]GC[text\ntext])").unwrap()[0];
         assert_eq!(node.get_text("GC").unwrap(), "text\ntext".to_string());
     }
 
     #[test]
     fn test_get_simple_text() {
-        let node = &sgf_parse("(;CA[UTF-8]FF[4]N[simple\\\ntext\nsimple])").unwrap()[0];
+        let node = &SgfCollection::from_sgf("(;CA[UTF-8]FF[4]N[simple\\\ntext\nsimple])").unwrap()[0];
         assert_eq!(node.get_simple_text("N").unwrap(), "simpletext simple".to_string());
     }
 
     #[test]
     fn test_get_simple_text_simple_text() {
-        let node = &sgf_parse("(;CA[UTF-8]FF[4]AP[mimiaka:1.0])").unwrap()[0];
+        let node = &SgfCollection::from_sgf("(;CA[UTF-8]FF[4]AP[mimiaka:1.0])").unwrap()[0];
         assert_eq!(node.get_simple_text_simple_text("AP").unwrap(), ("mimiaka".to_string(), "1.0".to_string()));
     }
 
     #[test]
     fn test_set_text() {
-        let node = &mut sgf_parse("(;CA[UTF-8]FF[4]AP[mimiaka:1.0])").unwrap()[0];
+        let node = &mut SgfCollection::from_sgf("(;CA[UTF-8]FF[4]AP[mimiaka:1.0])").unwrap()[0];
         node.set_text("GC", "test:".to_string());
         assert_eq!(node.get_text("GC").unwrap(), "test:".to_string());
     }

@@ -117,24 +117,39 @@ impl <'input> ParseState<'input> {
 }
 fn parse_collection<'input>(input: &'input str,
                             state: &mut ParseState<'input>, pos: usize)
- -> RuleResult<Vec<SgfNode>> {
+ -> RuleResult<SgfCollection> {
     {
-        let mut repeat_pos = pos;
-        let mut repeat_value = vec!();
-        loop  {
-            let pos = repeat_pos;
-            let step_res = parse_game_tree(input, state, pos);
-            match step_res {
-                Matched(newpos, value) => {
-                    repeat_pos = newpos;
-                    repeat_value.push(value);
+        let start_pos = pos;
+        {
+            let seq_res =
+                {
+                    let mut repeat_pos = pos;
+                    let mut repeat_value = vec!();
+                    loop  {
+                        let pos = repeat_pos;
+                        let step_res = parse_game_tree(input, state, pos);
+                        match step_res {
+                            Matched(newpos, value) => {
+                                repeat_pos = newpos;
+                                repeat_value.push(value);
+                            }
+                            Failed => { break ; }
+                        }
+                    }
+                    if repeat_value.len() >= 1usize {
+                        Matched(repeat_pos, repeat_value)
+                    } else { Failed }
+                };
+            match seq_res {
+                Matched(pos, gs) => {
+                    {
+                        let match_str = &input[start_pos..pos];
+                        Matched(pos, { SgfCollection::new(gs) })
+                    }
                 }
-                Failed => { break ; }
+                Failed => Failed,
             }
         }
-        if repeat_value.len() >= 1usize {
-            Matched(repeat_pos, repeat_value)
-        } else { Failed }
     }
 }
 fn parse_game_tree<'input>(input: &'input str, state: &mut ParseState<'input>,
@@ -966,7 +981,7 @@ fn parse_prop_value<'input>(input: &'input str,
         }
     }
 }
-pub fn collection<'input>(input: &'input str) -> ParseResult<Vec<SgfNode>> {
+pub fn collection<'input>(input: &'input str) -> ParseResult<SgfCollection> {
     let mut state = ParseState::new();
     match parse_collection(input, &mut state, 0) {
         Matched(pos, value) => { if pos == input.len() { return Ok(value) } }

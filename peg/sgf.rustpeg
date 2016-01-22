@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use sgf_node::*;
 
 #[export]
-collection -> Vec<SgfNode>
-    = game_tree+
+collection -> SgfCollection
+    = gs:game_tree+ {
+        SgfCollection::new(gs)
+    }
 
 game_tree -> SgfNode
     = [ \t\r\n\v]* "(" s:sequence gs:game_tree* ")" [ \t\r\n\v]* {
