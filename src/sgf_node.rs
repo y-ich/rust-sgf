@@ -10,6 +10,9 @@ pub type SgfDouble     = char;
 pub type SgfText       = String;
 pub type SgfSimpleText = String;
 
+/// SGF node with children. It means that a node also represents game tree.
+/// Access the field 'children' directly to traverse in its tree.
+/// To access SGF properties of the node, use various accessors below.
 #[derive(Debug)]
 pub struct SgfNode {
     properties: HashMap<String, Vec<String>>,
@@ -53,6 +56,7 @@ fn test_fmt() {
 impl SgfNode {
     /// Constructor.
     /// Returns an SgfNode with given propertes.
+    /// Properties should be stored in a HashMap in String name and a vector of String value.
     pub fn new(properties: HashMap<String, Vec<String>>) -> SgfNode {
         SgfNode {
             properties: properties,
@@ -78,6 +82,26 @@ impl SgfNode {
         self.properties.remove(id);
         self.properties.insert(id.to_string(), value);
         self
+    }
+
+    /// Writes itself and its children in SGF format to Write f.
+    /// This is for the function sgf_write.
+    pub fn fmt_sgf<T: fmt::Write>(&self, f: &mut T) -> fmt::Result {
+        let mut result = write!(f, ";");
+        for (key, value) in self.properties.iter() {
+            result = result.and(write!(f, "{}", key));
+            for v in value {
+                result = result.and(write!(f, "[{}]", v));
+            }
+        }
+        if self.children.len() == 1 {
+            result = result.and(self.children[0].fmt_sgf(f));
+        } else {
+            for child in self.children.iter() {
+                result = result.and(write!(f, "(")).and(child.fmt_sgf(f)).and(write!(f, ")"));
+            }
+        }
+        result
     }
 
     /// Returns a Result of id's value as SgfPoint.
@@ -274,18 +298,6 @@ fn test_encode_text() {
 #[cfg(test)]
 mod sgf_node_tests {
     use sgf_parse;
-
-    #[test]
-    fn test_parse() {
-        let result = sgf_parse("(;CA[UTF-8]FF[4])");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_parse_fail() {
-        let result = sgf_parse("(;CA[UTF-8]FFF[4])");
-        assert!(result.is_err());
-    }
 
     #[test]
     fn test_get_number() {
