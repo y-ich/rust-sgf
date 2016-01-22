@@ -8,4 +8,4 @@ repository = "https://github.com/y-ich/rust-sgf"
 license = "MIT"
 
 [dependencies]
-regex = "*"
+regex = "0.1.47"
