@@ -6,7 +6,7 @@ collection -> Vec<SgfNode>
     = game_tree+
 
 game_tree -> SgfNode
-    = "(" s:sequence gs:game_tree* ")" {
+    = [ \t\r\n\v]* "(" s:sequence gs:game_tree* ")" [ \t\r\n\v]* {
         let mut s = s;
         let mut gs = gs;
             {
@@ -17,7 +17,7 @@ game_tree -> SgfNode
     }
 
 sequence -> SgfNode
-    = ns:node+ {
+    = [ \t\r\n\v]* ns:node+ [ \t\r\n\v]* {
         let mut ns = ns;
         ns.reverse();
         let mut i = ns.into_iter();
@@ -30,7 +30,7 @@ sequence -> SgfNode
     }
 
 node -> SgfNode
-    = ";" props:property* {
+    = [ \t\r\n\v]* ";" props:property* [ \t\r\n\v]* {
         let mut h = HashMap::new();
         for e in props {
             h.insert(e.0, e.1);
@@ -39,7 +39,7 @@ node -> SgfNode
     }
 
 property -> (String, Vec<String>)
-    = i:prop_ident vs:prop_value+ {
+    = [ \t\r\n\v]* i:prop_ident vs:prop_value+ [ \t\r\n\v]* {
         (i, vs)
     }
 
@@ -49,6 +49,6 @@ prop_ident -> String
     }
 
 prop_value -> String
-    = "[" ("\\]" / [^\]])* "]" {
+    = [ \t\r\n\v]* "[" ("\\]" / [^\]])* "]" [ \t\r\n\v]* {
         match_str[1..match_str.len() - 1].to_string()
     }
