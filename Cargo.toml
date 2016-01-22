@@ -3,7 +3,7 @@ name = "sgf"
 description = "SGF parser"
 version = "0.1.0"
 authors = ["Yuji Ichikawa <ichikawa.yuji@gmail.com>"]
-keywords = ["sgf", "smart game format"]
+keywords = ["sgf", "parser"]
 repository = "https://github.com/y-ich/rust-sgf"
 license = "MIT"
 
