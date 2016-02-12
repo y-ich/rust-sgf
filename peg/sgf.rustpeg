@@ -46,7 +46,7 @@ property -> (String, Vec<String>)
     }
 
 prop_ident -> String
-    = [A-Z][A-Z]? {
+    = [A-Z]+ {
         match_str.to_string()
     }
 

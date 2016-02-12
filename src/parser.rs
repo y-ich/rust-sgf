@@ -750,41 +750,36 @@ fn parse_prop_ident<'input>(input: &'input str,
         let start_pos = pos;
         {
             let seq_res =
-                if input.len() > pos {
-                    let (ch, next) = char_range_at(input, pos);
-                    match ch {
-                        'A' ...'Z' => Matched(next, ()),
-                        _ => state.mark_failure(pos, "[A-Z]"),
+                {
+                    let mut repeat_pos = pos;
+                    let mut repeat_value = vec!();
+                    loop  {
+                        let pos = repeat_pos;
+                        let step_res =
+                            if input.len() > pos {
+                                let (ch, next) = char_range_at(input, pos);
+                                match ch {
+                                    'A' ...'Z' => Matched(next, ()),
+                                    _ => state.mark_failure(pos, "[A-Z]"),
+                                }
+                            } else { state.mark_failure(pos, "[A-Z]") };
+                        match step_res {
+                            Matched(newpos, value) => {
+                                repeat_pos = newpos;
+                                repeat_value.push(value);
+                            }
+                            Failed => { break ; }
+                        }
                     }
-                } else { state.mark_failure(pos, "[A-Z]") };
+                    if repeat_value.len() >= 1usize {
+                        Matched(repeat_pos, ())
+                    } else { Failed }
+                };
             match seq_res {
                 Matched(pos, _) => {
                     {
-                        let seq_res =
-                            match if input.len() > pos {
-                                      let (ch, next) =
-                                          char_range_at(input, pos);
-                                      match ch {
-                                          'A' ...'Z' => Matched(next, ()),
-                                          _ =>
-                                          state.mark_failure(pos, "[A-Z]"),
-                                      }
-                                  } else { state.mark_failure(pos, "[A-Z]") }
-                                {
-                                Matched(newpos, value) => {
-                                    Matched(newpos, Some(value))
-                                }
-                                Failed => { Matched(pos, None) }
-                            };
-                        match seq_res {
-                            Matched(pos, _) => {
-                                {
-                                    let match_str = &input[start_pos..pos];
-                                    Matched(pos, { match_str.to_string() })
-                                }
-                            }
-                            Failed => Failed,
-                        }
+                        let match_str = &input[start_pos..pos];
+                        Matched(pos, { match_str.to_string() })
                     }
                 }
                 Failed => Failed,

@@ -100,9 +100,9 @@ mod test_sgf_collection {
     }
 
     #[test]
-    fn test_from_sgf_fail() {
-        let result = SgfCollection::from_sgf("(;CA[UTF-8]FFF[4])");
-        assert!(result.is_err());
+    fn test_from_sgf_long_propid() {
+        let result = SgfCollection::from_sgf("(;CA[UTF-8]LONGNAME[])");
+        assert!(result.is_ok());
     }
 
     #[test]
