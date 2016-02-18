@@ -1,7 +1,8 @@
 [package]
 name = "sgf"
 description = "SGF parser"
-version = "0.1.1"
+documentation = "http://y-ich.github.io/rust-sgf/"
+version = "0.1.2"
 authors = ["Yuji Ichikawa <ichikawa.yuji@gmail.com>"]
 keywords = ["sgf", "parser"]
 repository = "https://github.com/y-ich/rust-sgf"
