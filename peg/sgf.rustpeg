@@ -1,0 +1,56 @@
+use std::collections::HashMap;
+use sgf_node::*;
+
+#[export]
+collection -> SgfCollection
+    = gs:game_tree+ {
+        SgfCollection::new(gs)
+    }
+
+game_tree -> SgfNode
+    = [ \t\r\n\v]* "(" s:sequence gs:game_tree* ")" [ \t\r\n\v]* {
+        let mut s = s;
+        let mut gs = gs;
+            {
+            let mut l = s.leaf_mut();
+            l.children.append(&mut gs);
+        }
+        s
+    }
+
+sequence -> SgfNode
+    = [ \t\r\n\v]* ns:node+ [ \t\r\n\v]* {
+        let mut ns = ns;
+        ns.reverse();
+        let mut i = ns.into_iter();
+        let mut l = i.next().unwrap();
+        for mut n in i {
+            n.children.push(l);
+            l = n;
+        }
+        l
+    }
+
+node -> SgfNode
+    = [ \t\r\n\v]* ";" props:property* [ \t\r\n\v]* {
+        let mut h = HashMap::new();
+        for e in props {
+            h.insert(e.0, e.1);
+        }
+        SgfNode::new(h)
+    }
+
+property -> (String, Vec<String>)
+    = [ \t\r\n\v]* i:prop_ident vs:prop_value+ [ \t\r\n\v]* {
+        (i, vs)
+    }
+
+prop_ident -> String
+    = [A-Z]+ {
+        match_str.to_string()
+    }
+
+prop_value -> String
+    = [ \t\r\n\v]* "[" ("\\]" / [^\]])* "]" [ \t\r\n\v]* {
+        match_str[1..match_str.len() - 1].to_string()
+    }
