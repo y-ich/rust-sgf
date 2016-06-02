@@ -32,12 +32,21 @@ sequence -> SgfNode
     }
 
 node -> SgfNode
-    = [ \t\r\n\v]* ";" props:property* [ \t\r\n\v]* {
+    = [ \t\r\n\v]* ";" props:property* [ \t\r\n\v]* {?
         let mut h = HashMap::new();
+        let mut duplicated = false;
         for e in props {
+            if h.contains_key(&e.0) {
+                duplicated = true;
+                break
+            }
             h.insert(e.0, e.1);
         }
-        SgfNode::new(h)
+        if duplicated {
+            Err("duplicated properties")
+        } else {
+            Ok(SgfNode::new(h))
+        }
     }
 
 property -> (String, Vec<String>)

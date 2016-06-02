@@ -575,19 +575,42 @@ fn parse_node<'input>(input: &'input str, state: &mut ParseState<'input>,
                                                         {
                                                             let match_str =
                                                                 &input[start_pos..pos];
-                                                            Matched(pos,
-                                                                    {
-                                                                        let mut h =
-                                                                            HashMap::new();
-                                                                        for e
-                                                                            in
-                                                                            props
-                                                                            {
-                                                                            h.insert(e.0,
-                                                                                     e.1);
-                                                                        }
-                                                                        SgfNode::new(h)
-                                                                    })
+                                                            match {
+                                                                      let mut h =
+                                                                          HashMap::new();
+                                                                      let mut duplicated =
+                                                                          false;
+                                                                      for e in
+                                                                          props
+                                                                          {
+                                                                          if h.contains_key(&e.0)
+                                                                             {
+                                                                              duplicated
+                                                                                  =
+                                                                                  true;
+                                                                              break
+
+                                                                          }
+                                                                          h.insert(e.0,
+                                                                                   e.1);
+                                                                      }
+                                                                      if duplicated
+                                                                         {
+                                                                          Err("duplicated properties")
+                                                                      } else {
+                                                                          Ok(SgfNode::new(h))
+                                                                      }
+                                                                  } {
+                                                                Ok(res) =>
+                                                                Matched(pos,
+                                                                        res),
+                                                                Err(expected)
+                                                                => {
+                                                                    state.mark_failure(pos,
+                                                                                       expected);
+                                                                    Failed
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                     Failed => Failed,

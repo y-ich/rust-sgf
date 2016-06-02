@@ -2,7 +2,7 @@
 name = "sgf"
 description = "SGF parser"
 documentation = "http://y-ich.github.io/rust-sgf/"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Yuji Ichikawa <ichikawa.yuji@gmail.com>"]
 keywords = ["sgf", "parser"]
 repository = "https://github.com/y-ich/rust-sgf"
