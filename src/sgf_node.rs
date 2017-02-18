@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Iter;
 use std::ops::{Index, IndexMut, Deref, DerefMut};
 use std::fmt;
 use regex::Regex;
@@ -205,6 +206,11 @@ impl SgfNode {
         self.properties.remove(id);
         self.properties.insert(id.to_string(), value);
         self
+    }
+
+    /// Returns an iterator of its properties.
+    pub fn iter(&self) -> Iter<String, Vec<String>> {
+        self.properties.iter()
     }
 
     /// Returns a Result of id's value as SgfPoint.

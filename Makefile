@@ -31,4 +31,4 @@ doc:
 .PHONY: all build clean check test bench doc
 
 $(PEG_GENERATED): peg/sgf.rustpeg
-	peg $< > $@
+	rust-peg $< > $@
