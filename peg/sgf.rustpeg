@@ -55,11 +55,11 @@ property -> (String, Vec<String>)
     }
 
 prop_ident -> String
-    = [A-Z]+ {
+    = match_str:$([A-Z]+) {
         match_str.to_string()
     }
 
 prop_value -> String
-    = [ \t\r\n\v]* "[" ("\\]" / [^\]])* "]" [ \t\r\n\v]* {
-        match_str[1..match_str.len() - 1].to_string()
+    = [ \t\r\n\v]* "[" match_str:$(("\\]" / [^\]])*) "]" [ \t\r\n\v]* {
+        match_str.to_string()
     }

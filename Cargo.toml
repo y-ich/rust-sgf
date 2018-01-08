@@ -2,7 +2,7 @@
 name = "sgf"
 description = "SGF parser"
 documentation = "http://y-ich.github.io/rust-sgf/"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Yuji Ichikawa <ichikawa.yuji@gmail.com>"]
 keywords = ["sgf", "parser"]
 repository = "https://github.com/y-ich/rust-sgf"
@@ -10,3 +10,6 @@ license = "MIT"
 
 [dependencies]
 regex = "0.1.47"
+
+[build-dependencies]
+peg = "0.5.1"
