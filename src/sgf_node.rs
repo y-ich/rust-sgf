@@ -455,4 +455,11 @@ mod sgf_node_tests {
         node.set_text("GC", "test:".to_string());
         assert_eq!(node.get_text("GC").unwrap(), "test:".to_string());
     }
+
+    #[test]
+    fn test_get_simple_text_simple_text_with_newline() {
+        let node = &SgfCollection::from_sgf("(;CA[UTF-8]FF[4]AP[mimiaka:1.0]\n)").unwrap()[0];
+        println!("foo {}", node);
+        assert_eq!(node.get_simple_text_simple_text("AP").unwrap(), ("mimiaka".to_string(), "1.0".to_string()));
+    }
 }
